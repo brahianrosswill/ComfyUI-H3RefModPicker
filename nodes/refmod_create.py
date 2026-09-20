@@ -244,9 +244,10 @@ def _scan_folder(folder: str) -> "tuple[List[str], List[str], List[str]]":
 
 
 def _image_size(path: str) -> "tuple[int, int]":
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     with Image.open(path) as img:
+        img = ImageOps.exif_transpose(img)
         return img.size
 
 
@@ -259,9 +260,10 @@ def _load_image_and_alpha_mask_file(path: str, max_edge: Optional[int] = None) -
     for the mask.
     """
     import numpy as np
-    from PIL import Image
+    from PIL import Image, ImageOps
 
     with Image.open(path) as img:
+        img = ImageOps.exif_transpose(img)
         rgba = img.convert("RGBA")
         rgb = rgba.convert("RGB")
         alpha = rgba.getchannel("A")

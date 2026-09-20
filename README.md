@@ -12,7 +12,7 @@ Please note, the `Create from Input` node was removed from this add-on. The same
 
 To have the Visual Picker pick up a preview image, place the image beside the RefMod using the same base name as the RefMod file.
 
-- For the newer bundle format, the image and the RefMod must share the exact same name. Example: `character_refMod.safetensors` with `character_refMod.png`.
+- For the newer bundle format, the image and the RefMod just need to share the exact same name. Example: `character_refMod.safetensors` with `character_refMod.png`.
 - For older split RefMods, do not name the preview image `_audio` or `_visual`. Use only the shared base name. Example: `character_refMod_visual.safetensors` and `character_refMod_audio.safetensors` should use `character_refMod.png`.
 - When a matching `_visual` and `_audio` pair exists, plus that shared preview image, the picker sees them as one logical item.
 
