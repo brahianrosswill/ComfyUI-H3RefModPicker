@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import replace
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from comfy_api.latest import io
 
@@ -17,6 +17,49 @@ RETENTION = {
     "attribute_transfer": 0.4,
     "weak_reference": 0.15,
 }
+
+
+def _filter_legacy_ref_block(block: Optional[Dict],
+                             use_video: bool,
+                             use_audio: bool) -> Optional[Dict]:
+    """Apply media toggles to ref blocks produced by older RefMod APIs."""
+    if block is None or (not use_video and not use_audio):
+        return None
+
+    kind = str(block.get("kind") or "").strip().lower()
+    has_audio = block.get("audio_latent") is not None and int(block.get("ref_audio_t") or 0) > 0
+
+    if kind == "audio":
+        return block if use_audio else None
+
+    if not use_video:
+        if use_audio and has_audio:
+            return {
+                "kind": "audio",
+                "ref_audio_t": int(block.get("ref_audio_t") or 0),
+                "audio_latent": block.get("audio_latent"),
+            }
+        return None
+
+    if not use_audio and has_audio:
+        filtered = dict(block)
+        filtered["kind"] = "video"
+        filtered["ref_audio_t"] = 0
+        filtered["audio_latent"] = None
+        return filtered
+
+    return block
+
+
+def _build_ref_block(mod, eff: float, curve, use_video: bool, use_audio: bool) -> Optional[Dict]:
+    try:
+        return mod.ref_block(eff, curve=curve, use_video=use_video, use_audio=use_audio)
+    except TypeError as exc:
+        message = str(exc)
+        if "unexpected keyword argument 'use_video'" not in message and "unexpected keyword argument 'use_audio'" not in message:
+            raise
+        legacy_block = mod.ref_block(eff, curve=curve)
+        return _filter_legacy_ref_block(legacy_block, use_video=use_video, use_audio=use_audio)
 
 
 def _ref_blocks(mods, retention, curve=None, seed=-1,
@@ -54,7 +97,7 @@ def _ref_blocks(mods, retention, curve=None, seed=-1,
     debug_rows = []
     for mod, strength in items:
         eff = min(1.0, max(0.0, strength * factor))
-        block = mod.ref_block(eff, curve=curve, use_video=use_video, use_audio=use_audio)
+        block = _build_ref_block(mod, eff, curve=curve, use_video=use_video, use_audio=use_audio)
         if block is not None:
             blocks.append(block)
             debug_rows.append(f"{mod.name}@{eff:.2f}")
